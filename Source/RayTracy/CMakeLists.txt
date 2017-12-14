@@ -1,0 +1,9 @@
+add_executable(RayTracy
+    SceneLoader.h
+    SceneLoader.cpp
+    Geometry.cpp
+    Geometry.h
+    Renderer.h
+    Renderer.cpp
+    main.cpp
+)
