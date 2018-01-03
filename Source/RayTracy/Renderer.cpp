@@ -2,6 +2,10 @@
 #include "SceneLoader.h"
 #include <iostream>
 
+Renderer::Renderer()
+{
+}
+
 bool Renderer::Initialize(int argc, char** argv)
 {
     if (argc != 2) {
@@ -10,7 +14,7 @@ bool Renderer::Initialize(int argc, char** argv)
     }
 
     SceneLoader loader;
-    return loader.LoadScene(argv[1], scene);
+    return loader.LoadScene(argv[1], &scene);
 }
 
 void Renderer::Render(uint8_t* buffer, uint32_t width, uint32_t height)
@@ -22,21 +26,23 @@ void Renderer::Render(uint8_t* buffer, uint32_t width, uint32_t height)
             Material material;
             Vector3 normal;
             auto ray = GetPrimaryRay(width, height, x, y, PI / 4);
-            float minDistance = INFINITY;
+            float minDistance = INFINITY, minU, minV;
             bool hasIntersection = false;
 
-            for (auto object : scene.objects) {
-                float distance;
+            for (auto& object : scene.objects) {
+                float distance, u, v;
                 Vector3 n;
-                if (object->HasIntersection(ray, &distance, &n) && distance < minDistance) {
+                if (object->HasIntersection(ray, &distance, &n, &u, &v) && distance < minDistance) {
                     hasIntersection = true;
                     material = object->material;
                     minDistance = distance;
                     normal = n;
+                    minU = u;
+                    minV = v;
                 }
             }
 
-            SetPixel(buffer, width, x, y, hasIntersection ? CalculateColor(material, normal, ray, minDistance) : scene.backgroundColor);
+            SetPixel(buffer, width, x, y, hasIntersection ? CalculateColor(material, normal, ray, minDistance, minU, minV) : scene.backgroundColor);
         }
     }
 }
@@ -51,10 +57,23 @@ void Renderer::SetPixel(uint8_t* buffer, uint32_t width, uint32_t x, uint32_t y,
     buffer[index + 3] = 255;
 }
 
-Vector3 Renderer::CalculateColor(Material material, Vector3 normal, Ray ray, float distance) const
+Vector3 Renderer::GetMaterialColor(Material material, float u, float v) const
+{
+    auto color = material.color;
+    if (material.texture >= 0 && material.texture < scene.textures.size()) {
+        auto textureColor = scene.textures[material.texture].GetPixel(u * material.textureScale, v * material.textureScale);
+        color.x *= textureColor.x;
+        color.y *= textureColor.y;
+        color.z *= textureColor.z;
+    }
+    return color;
+}
+
+Vector3 Renderer::CalculateColor(Material material, Vector3 normal, Ray ray, float distance, float u, float v) const
 {
     auto point = ray.origin + ray.direction * distance;
-    auto color = material.color * material.Ka;
+    auto materialColor = GetMaterialColor(material, u, v);
+    auto color = materialColor * material.Ka;
     for (auto light : scene.lights) {
         auto toLight = light.position - point;
         float distanceToLight = toLight.GetLength();
@@ -78,7 +97,7 @@ Vector3 Renderer::CalculateColor(Material material, Vector3 normal, Ray ray, flo
 
         float s = -Dot(reflected, toEye);
 
-        color = color + material.color * d;
+        color = color + materialColor * d;
         if (s > 0 && material.Ks > 0) {
             s = pow(s, material.S) * material.Ks;
             color = color + light.color * s;
@@ -103,7 +122,7 @@ Vector3 Renderer::CalculateColor(Material material, Vector3 normal, Ray ray, flo
 bool Renderer::CheckIntersection(Ray ray, float maxDistance) const
 {
     float distance;
-    for (auto object : scene.objects) {
+    for (auto& object : scene.objects) {
         if (object->HasIntersection(ray, &distance) && distance < maxDistance) {
             return true;
         }
@@ -157,9 +176,7 @@ Ray Renderer::GetPrimaryRay(uint32_t width, uint32_t height, uint32_t x, uint32_
 
 void Renderer::CleanUp()
 {
-    for (auto object : scene.objects) {
-        delete object;
-    }
+    scene.textures.clear();
     scene.objects.clear();
     scene.lights.clear();
 }

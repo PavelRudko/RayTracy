@@ -2,28 +2,7 @@
 
 #define EPSILON 0.000000000001
 
-float Dot(Vector3 a, Vector3 b)
-{
-    return a.x * b.x + a.y * b.y + a.z * b.z;
-}
-
-Vector3 Cross(Vector3 a, Vector3 b)
-{
-    return Vector3
-    {
-        a.y * b.z - a.z * b.y,
-        a.z * b.x - a.x * b.z,
-        a.x * b.y - a.y * b.x
-    };
-}
-
-Vector3 GetOppositeNormal(Vector3 normal, Vector3 direction)
-{
-    float angle = Dot(normal, direction);
-    return angle > 0 ? normal * -1 : normal;
-}
-
-bool RayTriangleIntersection(Vector3 a, Vector3 b, Vector3 c, Ray ray, float* t, Vector3* normal)
+bool RayTriangleIntersection(Vector3 a, Vector3 b, Vector3 c, Ray ray, float* t, Vector3* normal, float* outU, float* outV)
 {
     auto ab = b - a;
     auto ac = c - a;
@@ -63,10 +42,18 @@ bool RayTriangleIntersection(Vector3 a, Vector3 b, Vector3 c, Ray ray, float* t,
         *normal = GetOppositeNormal(n, ray.direction);
     }
 
+    if (outU) {
+        *outU = u;
+    }
+
+    if (outV) {
+        *outV = v;
+    }
+
     return true;
 }
 
-bool Sphere::HasIntersection(Ray ray, float* t, Vector3* normal)
+bool Sphere::HasIntersection(Ray ray, float* t, Vector3* normal, float* u, float* v)
 {
     Vector3 L = center - ray.origin;
     float tca = Dot(L, ray.direction);
@@ -94,12 +81,41 @@ bool Sphere::HasIntersection(Ray ray, float* t, Vector3* normal)
         auto n = intersectionPoint - center;
         n.Normalize();
         *normal = n;
+
+        if (u) {
+            *u = 0.5f + atan2(n.z, n.x) / (PI);
+        }
+
+        if (v) {
+            *v = 0.5f - asin(n.y) / PI;
+        }
     }
 
     return true;
 }
 
-bool Plane::HasIntersection(Ray ray, float* t, Vector3* intersectionNormal)
+void GetPlaneUV(Vector3 p0, Vector3 p, Vector3 n, float* outU, float* outV)
+{
+    Vector3 U, V;
+    if (n.y == 0) {
+        V = Vector3(0, -1, 0);
+        U = Cross(n, V);
+    }
+    else {
+        U = Vector3(p0.x + 1, (p0.y * n.y - n.x) / n.y, p0.z) - p0;
+        V = Vector3(p0.x, (p0.y * n.y - n.z) / n.y, p0.z + 1) - p0;
+    }
+    U.Normalize();
+    V.Normalize();
+    auto L = p - p0;
+    float l = L.GetLength();
+    float t = (L - U).GetLength();
+    float m = (L - V).GetLength();
+    *outU = (l * l - t * t + 1) / 2;
+    *outV = (l * l - m * m + 1) / 2;
+}
+
+bool Plane::HasIntersection(Ray ray, float* t, Vector3* intersectionNormal, float* u, float* v)
 {
     float d = Dot(ray.direction, normal);
 
@@ -123,14 +139,19 @@ bool Plane::HasIntersection(Ray ray, float* t, Vector3* intersectionNormal)
         *intersectionNormal = n;
     }
 
+    if (u && v) {
+        auto intersection = ray.direction * distance + ray.origin;
+        GetPlaneUV(point, intersection, n, u, v);
+    }
+
     return true;
 }
 
-bool Disk::HasIntersection(Ray ray, float* t, Vector3* intersectionNormal)
+bool Disk::HasIntersection(Ray ray, float* t, Vector3* intersectionNormal, float* u, float* v)
 {
     float distanceToPlane;
 
-    if (!Plane::HasIntersection(ray, &distanceToPlane, intersectionNormal)) {
+    if (!Plane::HasIntersection(ray, &distanceToPlane, intersectionNormal, u, v)) {
         return false;
     }
 
@@ -146,17 +167,17 @@ bool Disk::HasIntersection(Ray ray, float* t, Vector3* intersectionNormal)
     return true;
 }
 
-bool Triangle::HasIntersection(Ray ray, float* t, Vector3* normal)
+bool Triangle::HasIntersection(Ray ray, float* t, Vector3* normal, float* u, float* v)
 {
-    return RayTriangleIntersection(a, b, c, ray, t, normal);
+    return RayTriangleIntersection(a, b, c, ray, t, normal, u, v);
 }
 
-Mesh::Mesh(uint32_t verticesCount, uint32_t indicesCount) :
-    verticesCount{verticesCount},
-    indicesCount{indicesCount}
+Mesh::Mesh() : 
+    verticesCount{ 0 }, 
+    indicesCount{ 0 }, 
+    indices{nullptr}, 
+    vertices{nullptr}
 {
-    vertices = new Vector3[verticesCount];
-    indices = new uint32_t[indicesCount];
 }
 
 Mesh::Mesh(Mesh&& other)
@@ -170,10 +191,10 @@ Mesh::Mesh(Mesh&& other)
     other.indices = nullptr;
 }
 
-bool Mesh::HasIntersection(Ray ray, float* t, Vector3* normal)
+bool Mesh::HasIntersection(Ray ray, float* t, Vector3* normal, float* u, float* v)
 {
     bool hasIntersection = false;
-    float minDistance = INFINITY, distance;
+    float minDistance = INFINITY, distance, minU, minV, cu, cv;
     Vector3 minN, n;
 
     for (uint32_t i = 0; i < indicesCount; i += 3) {
@@ -183,11 +204,13 @@ bool Mesh::HasIntersection(Ray ray, float* t, Vector3* normal)
         auto b = vertices[indexB];
         auto c = vertices[indexC];
 
-        if (RayTriangleIntersection(a, b, c, ray, &distance, &n)) {
+        if (RayTriangleIntersection(a, b, c, ray, &distance, &n, &cu, &cv)) {
             hasIntersection = true;
             if (distance < minDistance) {
                 minDistance = distance;
                 minN = n;
+                minU = cu;
+                minV = cv;
             }
         }
     }
@@ -204,7 +227,29 @@ bool Mesh::HasIntersection(Ray ray, float* t, Vector3* normal)
         *normal = minN;
     }
 
+    if (u) {
+        *u = minU;
+    }
+
+    if (v) {
+        *v = minV;
+    }
+
     return true;
+}
+
+void Mesh::Resize(uint32_t verticesCount, uint32_t indicesCount)
+{
+    if (vertices) {
+        delete[] vertices;
+    }
+    if (indices) {
+        delete[] indices;
+    }
+    this->verticesCount = verticesCount;
+    this->indicesCount = indicesCount;
+    vertices = new Vector3[verticesCount];
+    indices = new uint32_t[indicesCount];
 }
 
 Mesh::~Mesh()

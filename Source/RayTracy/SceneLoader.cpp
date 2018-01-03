@@ -53,8 +53,10 @@ bool SceneLoader::ParseVector(Vector3& vector) {
     return ParseFloat(vector.x) && ParseFloat(vector.y) && ParseFloat(vector.z);
 }
 
+#define LookForInt(fieldName, field) if(strcmp(name, fieldName) == 0) { result = ParseInt(field); }
 #define LookForVector(fieldName, field) if(strcmp(name, fieldName) == 0) { result = ParseVector(field); }
 #define LookForFloat(fieldName, field) if(strcmp(name, fieldName) == 0) { result = ParseFloat(field); }
+
 #define LineByLine(objectName, code)                            \
     bool result = true;                                         \
     while(!feof(file) && result){                               \
@@ -68,99 +70,86 @@ bool SceneLoader::ParseVector(Vector3& vector) {
     }                                                           \
     return result ? true : CannotParse(objectName, lineNumber);
 
+#define LookForMaterial(material)                               \
+    LookForVector("color", material.color);                     \
+    LookForFloat("ka", material.Ka);                            \
+    LookForFloat("kd", material.Kd);                            \
+    LookForFloat("ks", material.Ks);                            \
+    LookForFloat("spow", material.S);                           \
+    LookForFloat("textureScale", material.textureScale);        \
+    LookForInt("texture", material.texture);
 
-bool SceneLoader::ParseScene(FILE* file, Scene& scene, uint32_t& lineNumber, char* line, char* token)
+#define RequireInt(fieldName, description, field)                               \
+    fgets(line, LineLength, file);                                              \
+    lineNumber++;                                                               \
+    if (strcmp(strtok(line, Delimiters), fieldName) != 0 || !ParseInt(field)) { \
+        Missing(description, lineNumber);                                       \
+        return false;                                                           \
+    }
+
+bool SceneLoader::ParseScene(FILE* file, Scene* scene, uint32_t& lineNumber, char* line, char* token)
 {
     LineByLine
     (
         "Scene",
-        LookForVector("backgroundColor", scene.backgroundColor);
+        LookForVector("backgroundColor", scene->backgroundColor);
     )
 }
 
-bool SceneLoader::ParseSphere(FILE* file, Sphere& sphere, uint32_t& lineNumber, char* line, char* token)
+bool SceneLoader::ParseSphere(FILE* file, Sphere* sphere, uint32_t& lineNumber, char* line, char* token)
 {
     LineByLine
     (
         "Sphere",
-        LookForVector("center", sphere.center);
-        LookForFloat("radius", sphere.radius);
-        LookForVector("color", sphere.material.color);
-        LookForFloat("ka", sphere.material.Ka);
-        LookForFloat("kd", sphere.material.Kd);
-        LookForFloat("ks", sphere.material.Ks);
-        LookForFloat("spow", sphere.material.S);
+        LookForVector("center", sphere->center);
+        LookForFloat("radius", sphere->radius);
+        LookForMaterial(sphere->material)
     )
 }
 
-bool SceneLoader::ParsePlane(FILE* file, Plane& plane, uint32_t& lineNumber, char* line, char* token)
+bool SceneLoader::ParsePlane(FILE* file, Plane* plane, uint32_t& lineNumber, char* line, char* token)
 {
     LineByLine
     (
         "Plane",
-        LookForVector("point", plane.point);
-        LookForVector("normal", plane.normal);
-        LookForVector("color", plane.material.color);
-        LookForFloat("ka", plane.material.Ka);
-        LookForFloat("kd", plane.material.Kd);
-        LookForFloat("ks", plane.material.Ks);
-        LookForFloat("spow", plane.material.S);
+        LookForVector("point", plane->point);
+        LookForVector("normal", plane->normal);
+        LookForMaterial(plane->material)
     )
 }
 
-bool SceneLoader::ParseDisk(FILE* file, Disk& disk, uint32_t& lineNumber, char* line, char* token)
+bool SceneLoader::ParseDisk(FILE* file, Disk* disk, uint32_t& lineNumber, char* line, char* token)
 {
     LineByLine
     (
         "Disk",
-        LookForVector("point", disk.point);
-        LookForVector("normal", disk.normal);
-        LookForFloat("radius", disk.radius);
-        LookForVector("color", disk.material.color);
-        LookForFloat("ka", disk.material.Ka);
-        LookForFloat("kd", disk.material.Kd);
-        LookForFloat("ks", disk.material.Ks);
-        LookForFloat("spow", disk.material.S);
+        LookForVector("point", disk->point);
+        LookForVector("normal", disk->normal);
+        LookForFloat("radius", disk->radius);
+        LookForMaterial(disk->material)
     )
 }
 
-bool SceneLoader::ParseTriangle(FILE* file, Triangle& triangle, uint32_t& lineNumber, char* line, char* token)
+bool SceneLoader::ParseTriangle(FILE* file, Triangle* triangle, uint32_t& lineNumber, char* line, char* token)
 {
     LineByLine
     (
         "Triangle",
-        LookForVector("a", triangle.a);
-        LookForVector("b", triangle.b);
-        LookForVector("c", triangle.c);
-        LookForVector("color", triangle.material.color);
-        LookForFloat("ka", triangle.material.Ka);
-        LookForFloat("kd", triangle.material.Kd);
-        LookForFloat("ks", triangle.material.Ks);
-        LookForFloat("spow", triangle.material.S);
+        LookForVector("a", triangle->a);
+        LookForVector("b", triangle->b);
+        LookForVector("c", triangle->c);
+        LookForMaterial(triangle->material)
     )
 }
 
-Mesh* SceneLoader::ParseMesh(FILE* file, uint32_t& lineNumber, char* line, char* token)
+bool SceneLoader::ParseMesh(FILE* file, Mesh* mesh, uint32_t& lineNumber, char* line, char* token)
 {
     int verticesCount, indicesCount;
 
-    fgets(line, LineLength, file);
-    lineNumber++;
-    auto name = strtok(line, Delimiters);
-    if (strcmp(name, "vertices") != 0 || !ParseInt(verticesCount)) {
-        Missing("Vertices count", lineNumber);
-        return nullptr;
-    }
+    RequireInt("vertices", "Vertices count", verticesCount);
+    RequireInt("indices", "Indices count", indicesCount);
 
-    fgets(line, LineLength, file);
-    lineNumber++;
-    name = strtok(line, Delimiters);
-    if (strcmp(name, "indices") != 0 || !ParseInt(indicesCount)) {
-        Missing("Indices count", lineNumber);
-        return nullptr;
-    }
-
-    auto mesh = new Mesh(verticesCount, indicesCount);
+    mesh->Resize(verticesCount, indicesCount);
 
     for (int i = 0; i < verticesCount; i++) {
         fgets(line, LineLength, file);
@@ -168,8 +157,7 @@ Mesh* SceneLoader::ParseMesh(FILE* file, uint32_t& lineNumber, char* line, char*
         Vector3 vertex;
         if (sscanf(line, "%f,%f,%f", &vertex.x, &vertex.y, &vertex.z) != 3) {
             Missing("Vertices", lineNumber);
-            delete mesh;
-            return nullptr;
+            return false;
         }
         mesh->SetVertex(i, vertex);
     }
@@ -180,13 +168,11 @@ Mesh* SceneLoader::ParseMesh(FILE* file, uint32_t& lineNumber, char* line, char*
         uint32_t index;
         if (sscanf(line, "%d", &index) != 1) {
             Missing("Indices", lineNumber);
-            delete mesh;
-            return nullptr;
+            return false;
         }
         if (index < 0 || index >= verticesCount) {
             printf("Index is out of range at line %d.\n", lineNumber);
-            delete mesh;
-            return nullptr;
+            return false;
         }
         mesh->SetIndex(i, index);
     }
@@ -200,34 +186,61 @@ Mesh* SceneLoader::ParseMesh(FILE* file, uint32_t& lineNumber, char* line, char*
             break;
         }
 
-        name = strtok(line, Delimiters);
-        LookForVector("color", mesh->material.color);
-        LookForFloat("ka", mesh->material.Ka);
-        LookForFloat("kd", mesh->material.Kd);
-        LookForFloat("ks", mesh->material.Ks);
-        LookForFloat("spow", mesh->material.S);
+        auto name = strtok(line, Delimiters);
+        LookForMaterial(mesh->material)
     }
 
     if (!result) {
         CannotParse("Mesh", lineNumber);
-        delete mesh;
-        return nullptr;
+        return false;
     }
 
-    return mesh;
+    return true;
 }
 
-bool SceneLoader::ParseLight(FILE* file, Light& light, uint32_t& lineNumber, char* line, char* token)
+bool SceneLoader::ParseLight(FILE* file, Light* light, uint32_t& lineNumber, char* line, char* token)
 {
     LineByLine
     (
         "Light",
-        LookForVector("position", light.position);
-        LookForVector("color", light.color);
+        LookForVector("position", light->position);
+        LookForVector("color", light->color);
     )
 }
 
-bool SceneLoader::ParseFile(FILE* file, Scene& scene)
+bool SceneLoader::ParseTexture(FILE * file, Scene * scene, uint32_t& lineNumber, char* line, char * token)
+{
+    int width, height, bytesPerPixel;
+
+    RequireInt("width", "Width", width);
+    RequireInt("height", "Height", height);
+    RequireInt("bytesPerPixel", "Bytes per pixel", bytesPerPixel);
+
+    if (width < 0 || height < 0 || bytesPerPixel < 3 || bytesPerPixel > 4) {
+        printf("Unacceptable values for texture at line %d.\n", lineNumber);
+        return false;
+    }
+
+    scene->textures.push_back(Texture(width, height, bytesPerPixel));
+    Texture& texture = scene->textures[scene->textures.size() - 1];
+
+    for (uint32_t y = 0; y < height; y++) {
+        for (uint32_t x = 0; x < width; x++) {
+            fgets(line, LineLength, file);
+            lineNumber++;
+            int r, g, b, a = 1;
+            if (sscanf(line, bytesPerPixel == 3 ? "%d,%d,%d" : "%d,%d,%d,%d", &r, &g, &b, &a) != bytesPerPixel) {
+                printf("Cannot parse texture color at line %d.\n", lineNumber);
+                return false;
+            }
+            texture.SetPixel(x, y, r, g, b, a);
+        }
+    }
+
+    return true;
+}
+
+bool SceneLoader::ParseFile(FILE* file, Scene* scene)
 {
     uint32_t lineNumber = 0;
     char line[LineLength], token[TokenLength];
@@ -247,38 +260,39 @@ bool SceneLoader::ParseFile(FILE* file, Scene& scene)
             result = ParseScene(file, scene, lineNumber, line, token);
         }
         else if (strcmp(token, "Sphere") == 0) {
-            auto sphere = new Sphere;
-            result = ParseSphere(file, *sphere, lineNumber, line, token);
-            scene.objects.push_back(sphere);
+            auto sphere = new Sphere();
+            result = ParseSphere(file, sphere, lineNumber, line, token);
+            scene->objects.push_back(std::unique_ptr<Object>(sphere));
         }
         else if (strcmp(token, "Plane") == 0) {
             auto plane = new Plane;
-            result = ParsePlane(file, *plane, lineNumber, line, token);
+            result = ParsePlane(file, plane, lineNumber, line, token);
             plane->normal.Normalize();
-            scene.objects.push_back(plane);
+            scene->objects.push_back(std::unique_ptr<Object>(plane));
         }
         else if (strcmp(token, "Disk") == 0) {
             auto disk = new Disk;
-            result = ParseDisk(file, *disk, lineNumber, line, token);
+            result = ParseDisk(file, disk, lineNumber, line, token);
             disk->normal.Normalize();
-            scene.objects.push_back(disk);
+            scene->objects.push_back(std::unique_ptr<Object>(disk));
         }
         else if (strcmp(token, "Triangle") == 0) {
             auto triangle = new Triangle;
-            result = ParseTriangle(file, *triangle, lineNumber, line, token);
-            scene.objects.push_back(triangle);
+            result = ParseTriangle(file, triangle, lineNumber, line, token);
+            scene->objects.push_back(std::unique_ptr<Object>(triangle));
         }
         else if (strcmp(token, "Light") == 0) {
             Light light;
-            result = ParseLight(file, light, lineNumber, line, token);
-            scene.lights.push_back(light);
+            result = ParseLight(file, &light, lineNumber, line, token);
+            scene->lights.push_back(light);
         }
         else if (strcmp(token, "Mesh") == 0) {
-            auto mesh = ParseMesh(file, lineNumber, line, token);
-            result = mesh != nullptr;
-            if (mesh) {
-                scene.objects.push_back(mesh);
-            }
+            auto mesh = new Mesh;
+            result = ParseMesh(file, mesh, lineNumber, line, token);
+            scene->objects.push_back(std::unique_ptr<Object>(mesh));
+        }
+        else if (strcmp(token, "Texture") == 0) {
+            result = ParseTexture(file, scene, lineNumber, line, token);
         }
         else {
             printf("Unknown token '%s' at line %d.\n", token, lineNumber);
@@ -293,9 +307,9 @@ bool SceneLoader::ParseFile(FILE* file, Scene& scene)
     return true;
 }
 
-bool SceneLoader::LoadScene(const char* path, Scene& scene)
+bool SceneLoader::LoadScene(const char* path, Scene* scene)
 {
-    scene.backgroundColor = Vector3{ 0, 0, 0 };
+    scene->backgroundColor = Vector3{ 0, 0, 0 };
 
     auto file = fopen(path, "r");
     if (!file) {
@@ -307,11 +321,8 @@ bool SceneLoader::LoadScene(const char* path, Scene& scene)
     fclose(file);
 
     if (!result) {
-        for (auto object : scene.objects) {
-            delete object;
-        }
-        scene.objects.clear();
-        scene.lights.clear();
+        scene->objects.clear();
+        scene->lights.clear();
     }
 
     return result;

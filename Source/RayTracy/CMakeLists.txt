@@ -5,5 +5,10 @@ add_executable(RayTracy
     Geometry.h
     Renderer.h
     Renderer.cpp
+    Texture.h
+    Texture.cpp
+    Vector.h
+    Vector.cpp
+    Scene.h
     main.cpp
 )
