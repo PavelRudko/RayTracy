@@ -17,7 +17,10 @@ public:
 
 private:
     Scene scene;
+    uint32_t maxDepth;
 
+    Vector3 RestrictColor(Vector3 color) const;
+    Vector3 CastRay(Ray ray, uint32_t depth) const;
     Ray GetPrimaryRay(uint32_t width, uint32_t height, uint32_t x, uint32_t y, float fov) const;
     void SetPixel(uint8_t* buffer, uint32_t width, uint32_t x, uint32_t y, Vector3 color) const;
     Vector3 CalculateColor(Material material, Vector3 normal, Ray ray, float distance, float u, float v) const;

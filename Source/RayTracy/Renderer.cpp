@@ -2,7 +2,7 @@
 #include "SceneLoader.h"
 #include <iostream>
 
-Renderer::Renderer()
+Renderer::Renderer() : maxDepth(3)
 {
 }
 
@@ -23,28 +23,62 @@ void Renderer::Render(uint8_t* buffer, uint32_t width, uint32_t height)
     {
         for (uint32_t x = 0; x < width; x++)
         {
-            Material material;
-            Vector3 normal;
             auto ray = GetPrimaryRay(width, height, x, y, PI / 4);
-            float minDistance = INFINITY, minU, minV;
-            bool hasIntersection = false;
-
-            for (auto& object : scene.objects) {
-                float distance, u, v;
-                Vector3 n;
-                if (object->HasIntersection(ray, &distance, &n, &u, &v) && distance < minDistance) {
-                    hasIntersection = true;
-                    material = object->material;
-                    minDistance = distance;
-                    normal = n;
-                    minU = u;
-                    minV = v;
-                }
-            }
-
-            SetPixel(buffer, width, x, y, hasIntersection ? CalculateColor(material, normal, ray, minDistance, minU, minV) : scene.backgroundColor);
+            auto color = CastRay(ray, 0);
+            SetPixel(buffer, width, x, y, color);
         }
     }
+}
+
+Vector3 Renderer::RestrictColor(Vector3 color) const
+{
+    if (color.x > 1) {
+        color.x = 1;
+    }
+
+    if (color.y > 1) {
+        color.y = 1;
+    }
+
+    if (color.z > 1) {
+        color.z = 1;
+    }
+
+    return color;
+}
+
+Vector3 Renderer::CastRay(Ray ray, uint32_t depth) const
+{
+    Material material;
+    Vector3 normal;
+    
+    float minDistance = INFINITY, minU, minV;
+    bool hasIntersection = false;
+
+    for (auto& object : scene.objects) {
+        float distance, u, v;
+        Vector3 n;
+        if (object->HasIntersection(ray, &distance, &n, &u, &v) && distance < minDistance) {
+            hasIntersection = true;
+            material = object->material;
+            minDistance = distance;
+            normal = n;
+            minU = u;
+            minV = v;
+        }
+    }
+
+    auto color = hasIntersection ? CalculateColor(material, normal, ray, minDistance, minU, minV) : scene.backgroundColor;
+    if (hasIntersection && material.reflectivity > 0 && depth < maxDepth) {
+        Ray reflected;
+        reflected.direction = ray.direction - normal * (2 * Dot(normal, ray.direction));
+        reflected.direction.Normalize();
+        reflected.origin = (ray.origin + ray.direction * minDistance) + reflected.direction * 0.0001;
+        auto reflectedColor = CastRay(reflected, depth + 1);
+        color = color + reflectedColor * material.reflectivity;
+    }
+    
+    return RestrictColor(color);
 }
 
 void Renderer::SetPixel(uint8_t* buffer, uint32_t width, uint32_t x, uint32_t y, Vector3 color) const
@@ -104,19 +138,7 @@ Vector3 Renderer::CalculateColor(Material material, Vector3 normal, Ray ray, flo
         }
     }
 
-    if (color.x > 1) {
-        color.x = 1;
-    }
-
-    if (color.y > 1) {
-        color.y = 1;
-    }
-
-    if (color.z > 1) {
-        color.z = 1;
-    }
-
-    return color;
+    return RestrictColor(color);
 }
 
 bool Renderer::CheckIntersection(Ray ray, float maxDistance) const
