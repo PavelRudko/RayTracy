@@ -14,7 +14,7 @@ struct Ray
 
 struct Material
 {
-    float Ka, Kd, Ks, S, textureScale, reflectivity;
+    float Ka, Kd, Ks, S, textureScale, reflectivity, ior;
     Vector3 color;
     int texture;
 
@@ -26,7 +26,8 @@ struct Material
         S{ 0 },
         texture{ -1 },
         textureScale{ 1 },
-        reflectivity{ 0 }
+        reflectivity{ 0 },
+        ior{ 0 }
     {
     }
 };

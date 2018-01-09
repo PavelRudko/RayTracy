@@ -78,6 +78,7 @@ bool SceneLoader::ParseVector(Vector3& vector) {
     LookForFloat("spow", material.S);                           \
     LookForFloat("textureScale", material.textureScale);        \
     LookForFloat("reflectivity", material.reflectivity);        \
+    LookForFloat("ior", material.ior);                          \
     LookForInt("texture", material.texture);
 
 #define RequireInt(fieldName, description, field)                               \

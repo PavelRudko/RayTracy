@@ -69,13 +69,27 @@ Vector3 Renderer::CastRay(Ray ray, uint32_t depth) const
     }
 
     auto color = hasIntersection ? CalculateColor(material, normal, ray, minDistance, minU, minV) : scene.backgroundColor;
-    if (hasIntersection && material.reflectivity > 0 && depth < maxDepth) {
-        Ray reflected;
-        reflected.direction = ray.direction - normal * (2 * Dot(normal, ray.direction));
-        reflected.direction.Normalize();
-        reflected.origin = (ray.origin + ray.direction * minDistance) + reflected.direction * 0.0001;
-        auto reflectedColor = CastRay(reflected, depth + 1);
-        color = color + reflectedColor * material.reflectivity;
+    if (hasIntersection) {
+        float kr = material.reflectivity;
+        if (material.ior > 1 && depth < maxDepth) {
+            Ray refracted;
+            if (Refract(ray.direction, normal, material.ior, &refracted.direction, &kr)) {
+                bool outside = Dot(ray.direction, normal) < 0;
+                auto bias = normal * 0.0001;
+                auto point = (ray.origin + ray.direction * minDistance);
+                refracted.origin = outside ? point - bias : point + bias;
+                auto refractedColor = CastRay(refracted, depth + 1);
+                color = color + refractedColor * (1 - kr);
+            }
+        }
+        if (kr > 0 && depth < maxDepth) {
+            Ray reflected;
+            reflected.direction = ray.direction - normal * (2 * Dot(normal, ray.direction));
+            reflected.direction.Normalize();
+            reflected.origin = (ray.origin + ray.direction * minDistance) + reflected.direction * 0.0001;
+            auto reflectedColor = CastRay(reflected, depth + 1);
+            color = color + reflectedColor * kr;
+        }
     }
     
     return RestrictColor(color);
@@ -194,6 +208,47 @@ Ray Renderer::GetPrimaryRay(uint32_t width, uint32_t height, uint32_t x, uint32_
     ray.direction.Normalize();
 
     return ray;
+}
+
+float Clamp(float min, float max, float value)
+{
+    if (value < min) {
+        return min;
+    }
+
+    if (value > max) {
+        return max;
+    }
+
+    return value;
+}
+
+bool Renderer::Refract(Vector3 direction, Vector3 normal, float ior, Vector3* refracted, float* kr) const
+{
+    float cosi = Clamp(-1, 1, Dot(direction, normal));
+    float etai = 1, etat = ior;
+    if (cosi < 0) {
+        cosi = -cosi;
+    }
+    else {
+        normal = normal * (-1);
+        std::swap(etai, etat);
+    }
+    float eta = etai / etat;
+    float sint = eta * sqrtf(std::fmax(0.0f, 1 - cosi * cosi));
+
+    if (sint >= 1) {
+        return false;
+    }
+
+    float cost = sqrtf(std::fmax(0.0f, 1 - sint * sint));
+    float rs = (etat * cosi - etai * cost) / (etat * cosi - etai * cost);
+    float rp = (etai * cosi - etat * cost) / (etai * cosi + etat * cost);
+    
+    *kr = (rs * rs + rp * rp) / 2;
+    *refracted = direction * eta + normal * (eta * cosi - cost);
+
+    return true;
 }
 
 void Renderer::CleanUp()

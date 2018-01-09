@@ -70,7 +70,7 @@ bool Sphere::HasIntersection(Ray ray, float* t, Vector3* normal, float* u, float
     }
 
     float thc = sqrtf(radius * radius - d * d);
-    float distance = tca - thc;
+    float distance = l < radius ? tca + thc : tca - thc;
 
     if (t) {
         *t = distance;

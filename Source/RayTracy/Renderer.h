@@ -20,6 +20,7 @@ private:
     uint32_t maxDepth;
 
     Vector3 RestrictColor(Vector3 color) const;
+    bool Refract(Vector3 direction, Vector3 normal, float ior, Vector3* refracted, float* kr) const;
     Vector3 CastRay(Ray ray, uint32_t depth) const;
     Ray GetPrimaryRay(uint32_t width, uint32_t height, uint32_t x, uint32_t y, float fov) const;
     void SetPixel(uint8_t* buffer, uint32_t width, uint32_t x, uint32_t y, Vector3 color) const;
