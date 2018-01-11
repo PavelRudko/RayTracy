@@ -5,19 +5,11 @@ Texture
   width: 2
   height: 2
   bytesPerPixel: 3
+  mipmap: 1
   0, 0, 0
   255, 255, 255
   255, 255, 255
   0, 0, 0
-
-Texture
-  width: 2
-  height: 2
-  bytesPerPixel: 3
-  100, 100, 100
-  255, 255, 255
-  255, 0, 255
-  0, 255, 255
 
 Sphere
   center: 0, -2, -7
@@ -59,6 +51,7 @@ Plane
   ks: 0.0
   texture: 0
   reflectivity: 0.3
+  mipBias: 11
 
 Disk
   point: -2, -2, -7

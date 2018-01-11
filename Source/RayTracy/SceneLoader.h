@@ -14,6 +14,7 @@ private:
     bool IsEmptyLine(const char* line);
     bool ParseFloat(float& value);
     bool ParseInt(int& value);
+    bool ParseBool(bool& value);
     bool ParseVector(Vector3& vector);
     bool ParseScene(FILE* file, Scene* scene, uint32_t& lineNumber, char* line, char* token);
     bool ParseSphere(FILE* file, Sphere* sphere, uint32_t& lineNumber, char* line, char* token);

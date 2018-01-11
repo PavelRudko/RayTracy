@@ -1,6 +1,7 @@
 #include "Renderer.h"
 #include "SceneLoader.h"
 #include <iostream>
+#include <math.h>
 
 Renderer::Renderer() : maxDepth(3)
 {
@@ -24,7 +25,7 @@ void Renderer::Render(uint8_t* buffer, uint32_t width, uint32_t height)
         for (uint32_t x = 0; x < width; x++)
         {
             auto ray = GetPrimaryRay(width, height, x, y, PI / 4);
-            auto color = CastRay(ray, 0);
+            auto color = CastRay(ray, 0, width * height);
             SetPixel(buffer, width, x, y, color);
         }
     }
@@ -47,7 +48,7 @@ Vector3 Renderer::RestrictColor(Vector3 color) const
     return color;
 }
 
-Vector3 Renderer::CastRay(Ray ray, uint32_t depth) const
+Vector3 Renderer::CastRay(Ray ray, uint32_t depth, uint32_t resolution) const
 {
     Material material;
     Vector3 normal;
@@ -68,7 +69,7 @@ Vector3 Renderer::CastRay(Ray ray, uint32_t depth) const
         }
     }
 
-    auto color = hasIntersection ? CalculateColor(material, normal, ray, minDistance, minU, minV) : scene.backgroundColor;
+    auto color = hasIntersection ? CalculateColor(material, normal, ray, minDistance, minU, minV, resolution) : scene.backgroundColor;
     if (hasIntersection) {
         float kr = material.reflectivity;
         if (material.ior > 1 && depth < maxDepth) {
@@ -78,7 +79,7 @@ Vector3 Renderer::CastRay(Ray ray, uint32_t depth) const
                 auto bias = normal * 0.0001;
                 auto point = (ray.origin + ray.direction * minDistance);
                 refracted.origin = outside ? point - bias : point + bias;
-                auto refractedColor = CastRay(refracted, depth + 1);
+                auto refractedColor = CastRay(refracted, depth + 1, resolution);
                 color = color + refractedColor * (1 - kr);
             }
         }
@@ -87,7 +88,7 @@ Vector3 Renderer::CastRay(Ray ray, uint32_t depth) const
             reflected.direction = ray.direction - normal * (2 * Dot(normal, ray.direction));
             reflected.direction.Normalize();
             reflected.origin = (ray.origin + ray.direction * minDistance) + reflected.direction * 0.0001;
-            auto reflectedColor = CastRay(reflected, depth + 1);
+            auto reflectedColor = CastRay(reflected, depth + 1, resolution);
             color = color + reflectedColor * kr;
         }
     }
@@ -105,11 +106,31 @@ void Renderer::SetPixel(uint8_t* buffer, uint32_t width, uint32_t x, uint32_t y,
     buffer[index + 3] = 255;
 }
 
-Vector3 Renderer::GetMaterialColor(Material material, float u, float v) const
+Vector4 Renderer::FilterTexture(const Texture& texture, float x, float y, float distance, uint32_t resolution, float textureScale, float mipBias) const
+{
+    float texelSize = (textureScale / texture.GetWidth()) * (textureScale / texture.GetHeight());
+    float factor = texelSize * resolution;
+    int level = log2(distance / factor) + mipBias;
+    auto currentLevelColor = texture.GetPixel(x, y, std::fmax(0, level));
+    if (level <= 0) {
+        return currentLevelColor;
+    }
+    float minDistance = pow(2, level - mipBias) * factor;
+    float maxDistance = pow(2, level + 1 - mipBias) * factor;
+    float k = (distance - minDistance) / (maxDistance - minDistance);
+    auto previousLevelColor = texture.GetPixel(x, y, std::fmax(0, level - 1));
+    return currentLevelColor * k + previousLevelColor * (1 - k);
+}
+
+Vector3 Renderer::GetMaterialColor(Material material, float u, float v, float distance, uint32_t resolution) const
 {
     auto color = material.color;
     if (material.texture >= 0 && material.texture < scene.textures.size()) {
-        auto textureColor = scene.textures[material.texture].GetPixel(u * material.textureScale, v * material.textureScale);
+        float texX = u * material.textureScale;
+        float texY = v * material.textureScale;
+        auto& texture = scene.textures[material.texture];
+        auto textureColor = texture.HasMipmap() ? FilterTexture(texture, texX, texY, distance, resolution, material.textureScale, material.mipBias) : texture.GetPixel(texX, texY);
+        
         color.x *= textureColor.x;
         color.y *= textureColor.y;
         color.z *= textureColor.z;
@@ -117,10 +138,10 @@ Vector3 Renderer::GetMaterialColor(Material material, float u, float v) const
     return color;
 }
 
-Vector3 Renderer::CalculateColor(Material material, Vector3 normal, Ray ray, float distance, float u, float v) const
+Vector3 Renderer::CalculateColor(Material material, Vector3 normal, Ray ray, float distance, float u, float v, uint32_t resolution) const
 {
     auto point = ray.origin + ray.direction * distance;
-    auto materialColor = GetMaterialColor(material, u, v);
+    auto materialColor = GetMaterialColor(material, u, v, distance, resolution);
     auto color = materialColor * material.Ka;
     for (auto light : scene.lights) {
         auto toLight = light.position - point;

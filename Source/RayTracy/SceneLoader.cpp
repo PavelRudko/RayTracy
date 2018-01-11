@@ -49,6 +49,19 @@ bool SceneLoader::ParseInt(int& value)
     return true;
 }
 
+bool SceneLoader::ParseBool(bool& value)
+{
+    auto token = strtok(0, Delimiters);
+    if (!token) {
+        return false;
+    }
+    value = strcmp(token, "true") == 0;
+    if (!value && !(strcmp(token, "false") == 0)) {
+        return false;
+    }
+    return true;
+}
+
 bool SceneLoader::ParseVector(Vector3& vector) {
     return ParseFloat(vector.x) && ParseFloat(vector.y) && ParseFloat(vector.z);
 }
@@ -56,6 +69,7 @@ bool SceneLoader::ParseVector(Vector3& vector) {
 #define LookForInt(fieldName, field) if(strcmp(name, fieldName) == 0) { result = ParseInt(field); }
 #define LookForVector(fieldName, field) if(strcmp(name, fieldName) == 0) { result = ParseVector(field); }
 #define LookForFloat(fieldName, field) if(strcmp(name, fieldName) == 0) { result = ParseFloat(field); }
+#define LookForBool(fieldName, field) if(strcmp(name, fieldName) == 0) { result = ParseBool(field); }
 
 #define LineByLine(objectName, code)                            \
     bool result = true;                                         \
@@ -79,6 +93,7 @@ bool SceneLoader::ParseVector(Vector3& vector) {
     LookForFloat("textureScale", material.textureScale);        \
     LookForFloat("reflectivity", material.reflectivity);        \
     LookForFloat("ior", material.ior);                          \
+    LookForFloat("mipBias", material.mipBias);                  \
     LookForInt("texture", material.texture);
 
 #define RequireInt(fieldName, description, field)                               \
@@ -212,18 +227,19 @@ bool SceneLoader::ParseLight(FILE* file, Light* light, uint32_t& lineNumber, cha
 
 bool SceneLoader::ParseTexture(FILE * file, Scene * scene, uint32_t& lineNumber, char* line, char * token)
 {
-    int width, height, bytesPerPixel;
+    int width, height, bytesPerPixel, mipmap;
 
     RequireInt("width", "Width", width);
     RequireInt("height", "Height", height);
     RequireInt("bytesPerPixel", "Bytes per pixel", bytesPerPixel);
+    RequireInt("mipmap", "Mipmap", mipmap);
 
-    if (width < 0 || height < 0 || bytesPerPixel < 3 || bytesPerPixel > 4) {
+    if (width < 0 || height < 0 || bytesPerPixel < 3 || bytesPerPixel > 4 || (mipmap != 0 && mipmap != 1)) {
         printf("Unacceptable values for texture at line %d.\n", lineNumber);
         return false;
     }
 
-    scene->textures.push_back(Texture(width, height, bytesPerPixel));
+    scene->textures.push_back(Texture(width, height, bytesPerPixel, mipmap == 1));
     Texture& texture = scene->textures[scene->textures.size() - 1];
 
     for (uint32_t y = 0; y < height; y++) {
@@ -237,6 +253,10 @@ bool SceneLoader::ParseTexture(FILE * file, Scene * scene, uint32_t& lineNumber,
             }
             texture.SetPixel(x, y, r, g, b, a);
         }
+    }
+
+    if (mipmap == 1) {
+        texture.GenerateMipmap();
     }
 
     return true;
