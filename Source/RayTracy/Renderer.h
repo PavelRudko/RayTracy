@@ -17,7 +17,7 @@ public:
 
 private:
     Scene scene;
-    uint32_t maxDepth;
+    uint32_t maxDepth, samplesCount;
 
     Vector4 Renderer::FilterTexture(const Texture& texture, float x, float y, float distance, uint32_t resolution, float textureScale, float mipBias) const;
     Vector3 RestrictColor(Vector3 color) const;

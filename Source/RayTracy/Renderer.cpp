@@ -3,7 +3,7 @@
 #include <iostream>
 #include <math.h>
 
-Renderer::Renderer() : maxDepth(3)
+Renderer::Renderer() : maxDepth(3), samplesCount(4)
 {
 }
 
@@ -20,13 +20,22 @@ bool Renderer::Initialize(int argc, char** argv)
 
 void Renderer::Render(uint8_t* buffer, uint32_t width, uint32_t height)
 {
+    uint32_t sampleWidth = width * samplesCount;
+    uint32_t sampleHeight = height * samplesCount;
+    float averageFactor = (1.0f / (samplesCount * samplesCount));
     for (uint32_t y = 0; y < height; y++)
     {
         for (uint32_t x = 0; x < width; x++)
         {
-            auto ray = GetPrimaryRay(width, height, x, y, PI / 4);
-            auto color = CastRay(ray, 0, width * height);
-            SetPixel(buffer, width, x, y, color);
+            Vector3 sum { 0, 0, 0 };
+            for (uint32_t dx = 0; dx < samplesCount; dx++) {
+                for (uint32_t dy = 0; dy < samplesCount; dy++) {
+                    auto ray = GetPrimaryRay(sampleWidth, sampleHeight, x * samplesCount + dx, y * samplesCount + dy, PI / 4);
+                    sum = sum + CastRay(ray, 0, sampleWidth * sampleHeight);
+                }
+            }
+
+            SetPixel(buffer, width, x, y, sum * averageFactor);
         }
     }
 }
