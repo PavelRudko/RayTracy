@@ -16,6 +16,8 @@ add_executable(RayTracy
     Texture.cpp
     Vector.h
     Vector.cpp
+    Matrix.h
+    Matrix.cpp
     Scene.h
     main.cpp
 )

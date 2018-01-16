@@ -169,6 +169,7 @@ bool SceneLoader::ParseTriangle(FILE* file, Triangle* triangle, uint32_t& lineNu
 
 bool SceneLoader::ParseMesh(FILE* file, Mesh* mesh, uint32_t& lineNumber, char* line, char* token)
 {
+    Vector3 position, rotation;
     int verticesCount = 0, indicesCount = 0, hasTextureCoordinates = 0;
 
     bool result = true;
@@ -182,6 +183,8 @@ bool SceneLoader::ParseMesh(FILE* file, Mesh* mesh, uint32_t& lineNumber, char* 
         LookForInt("vertices", verticesCount);
         LookForInt("indices", indicesCount);
         LookForInt("hasTextureCoordinates", hasTextureCoordinates);
+        LookForVector("position", position);
+        LookForVector("rotation", rotation);
         if (strcmp("data", name) == 0) {
             break;
         }
@@ -193,6 +196,7 @@ bool SceneLoader::ParseMesh(FILE* file, Mesh* mesh, uint32_t& lineNumber, char* 
     }
 
     mesh->Resize(verticesCount, indicesCount, hasTextureCoordinates == 1);
+    mesh->SetTransformation(position, rotation);
 
     for (int i = 0; i < verticesCount; i++) {
         fgets(line, LineLength, file);

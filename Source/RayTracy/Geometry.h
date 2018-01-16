@@ -2,6 +2,7 @@
 #define GEOMETRY_H
 
 #include "Vector.h"
+#include "Matrix.h"
 #include <stdint.h>
 
 #define PI 3.141592653589
@@ -90,6 +91,7 @@ struct Mesh : public Object
     uint32_t* indices;
     uint32_t indicesCount;
     uint32_t verticesCount;
+    Matrix4 rotationMatrix, translationMatrix;
 
     Mesh();
     Mesh(Mesh&& other);
@@ -113,6 +115,8 @@ struct Mesh : public Object
     {
         textureCoordinates[index] = value;
     }
+
+    void SetTransformation(Vector3 position, Vector3 rotation);
 
     ~Mesh();
 };
