@@ -86,6 +86,7 @@ struct Triangle : public Object
 struct Mesh : public Object
 {
     Vector3* vertices;
+    Vector2* textureCoordinates;
     uint32_t* indices;
     uint32_t indicesCount;
     uint32_t verticesCount;
@@ -96,7 +97,7 @@ struct Mesh : public Object
 
     virtual bool HasIntersection(Ray ray, float* t = 0, Vector3* normal = 0, float* u = 0, float* v = 0) override;
 
-    void Resize(uint32_t verticesCount, uint32_t indicesCount);
+    void Resize(uint32_t verticesCount, uint32_t indicesCount, bool hasTextureCoordinates);
 
     inline void SetIndex(uint32_t index, uint32_t value) 
     {
@@ -106,6 +107,11 @@ struct Mesh : public Object
     inline void SetVertex(uint32_t index, Vector3 value)
     {
         vertices[index] = value;
+    }
+
+    inline void SetTextureCoordinate(uint32_t index, Vector2 value)
+    {
+        textureCoordinates[index] = value;
     }
 
     ~Mesh();

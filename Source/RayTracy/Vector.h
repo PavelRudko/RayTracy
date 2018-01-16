@@ -3,6 +3,20 @@
 
 #include <math.h>
 
+struct Vector2
+{
+    float x;
+    float y;
+
+    Vector2(float x = 0, float y = 0);
+
+    float GetLength();
+    void Normalize();
+    Vector2 operator * (float multiplier);
+    Vector2 operator + (Vector2 other);
+    Vector2 operator - (Vector2 other);
+};
+
 struct Vector3
 {
     float x;

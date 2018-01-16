@@ -169,12 +169,30 @@ bool SceneLoader::ParseTriangle(FILE* file, Triangle* triangle, uint32_t& lineNu
 
 bool SceneLoader::ParseMesh(FILE* file, Mesh* mesh, uint32_t& lineNumber, char* line, char* token)
 {
-    int verticesCount, indicesCount;
+    int verticesCount = 0, indicesCount = 0, hasTextureCoordinates = 0;
 
-    RequireInt("vertices", "Vertices count", verticesCount);
-    RequireInt("indices", "Indices count", indicesCount);
+    bool result = true;
+    while (!feof(file) && result) {
+        fgets(line, LineLength, file);
+        lineNumber++;
+        if (IsEmptyLine(line)) {
+            break;
+        }
+        auto name = strtok(line, Delimiters);
+        LookForInt("vertices", verticesCount);
+        LookForInt("indices", indicesCount);
+        LookForInt("hasTextureCoordinates", hasTextureCoordinates);
+        if (strcmp("data", name) == 0) {
+            break;
+        }
+    }
 
-    mesh->Resize(verticesCount, indicesCount);
+    if (verticesCount <= 0 || indicesCount <= 0 || (hasTextureCoordinates != 0 && hasTextureCoordinates != 1)) {
+        printf("Unacceptable values for mesh at line %d.\n", lineNumber);
+        return false;
+    }
+
+    mesh->Resize(verticesCount, indicesCount, hasTextureCoordinates == 1);
 
     for (int i = 0; i < verticesCount; i++) {
         fgets(line, LineLength, file);
@@ -185,6 +203,17 @@ bool SceneLoader::ParseMesh(FILE* file, Mesh* mesh, uint32_t& lineNumber, char* 
             return false;
         }
         mesh->SetVertex(i, vertex);
+    }
+
+    for (int i = 0; i < verticesCount && hasTextureCoordinates; i++) {
+        fgets(line, LineLength, file);
+        lineNumber++;
+        Vector2 textureCoordinate;
+        if (sscanf(line, "%f,%f", &textureCoordinate.x, &textureCoordinate.y) != 2) {
+            Missing("Texture coordinates", lineNumber);
+            return false;
+        }
+        mesh->SetTextureCoordinate(i, textureCoordinate);
     }
 
     for (int i = 0; i < indicesCount; i++) {
@@ -202,7 +231,7 @@ bool SceneLoader::ParseMesh(FILE* file, Mesh* mesh, uint32_t& lineNumber, char* 
         mesh->SetIndex(i, index);
     }
 
-    bool result = true;
+    result = true;
     while (!feof(file) && result) {
         fgets(line, LineLength, file);
         lineNumber++;

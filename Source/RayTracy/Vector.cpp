@@ -1,5 +1,38 @@
 #include "Vector.h"
 
+Vector2::Vector2(float x, float y) :
+    x(x),
+    y(y)
+{
+}
+
+float Vector2::GetLength()
+{
+    return sqrtf(x * x + y * y);
+}
+
+void Vector2::Normalize()
+{
+    float length = GetLength();
+    x /= length;
+    y /= length;
+}
+
+Vector2 Vector2::operator * (float multiplier)
+{
+    return Vector2{ x * multiplier, y * multiplier };
+}
+
+Vector2 Vector2::operator + (Vector2 other)
+{
+    return Vector2{ x + other.x, y + other.y };
+}
+
+Vector2 Vector2::operator - (Vector2 other)
+{
+    return Vector2{ x - other.x, y - other.y };
+}
+
 Vector3::Vector3(float x, float y, float z) : 
     x(x), 
     y(y), 

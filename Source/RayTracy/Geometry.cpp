@@ -176,7 +176,8 @@ Mesh::Mesh() :
     verticesCount{ 0 }, 
     indicesCount{ 0 }, 
     indices{nullptr}, 
-    vertices{nullptr}
+    vertices{nullptr},
+    textureCoordinates{nullptr}
 {
 }
 
@@ -184,11 +185,13 @@ Mesh::Mesh(Mesh&& other)
 {
     vertices = other.vertices;
     indices = other.indices;
+    textureCoordinates = other.textureCoordinates;
     verticesCount = other.verticesCount;
     indicesCount = other.indicesCount;
 
     other.vertices = nullptr;
     other.indices = nullptr;
+    other.textureCoordinates = nullptr;
 }
 
 bool Mesh::HasIntersection(Ray ray, float* t, Vector3* normal, float* u, float* v)
@@ -209,8 +212,18 @@ bool Mesh::HasIntersection(Ray ray, float* t, Vector3* normal, float* u, float* 
             if (distance < minDistance) {
                 minDistance = distance;
                 minN = n;
-                minU = cu;
-                minV = cv;
+                if (textureCoordinates) {
+                    auto t1 = textureCoordinates[indexA];
+                    auto t2 = textureCoordinates[indexB];
+                    auto t3 = textureCoordinates[indexC];
+                    auto t = t1 * (1 - cu - cv) + t2 * cu + t3 * cv;
+                    minU = t.x;
+                    minV = t.y;
+                }
+                else {
+                    minU = cu;
+                    minV = cv;
+                }
             }
         }
     }
@@ -238,7 +251,7 @@ bool Mesh::HasIntersection(Ray ray, float* t, Vector3* normal, float* u, float* 
     return true;
 }
 
-void Mesh::Resize(uint32_t verticesCount, uint32_t indicesCount)
+void Mesh::Resize(uint32_t verticesCount, uint32_t indicesCount, bool hasTextureCoordinates)
 {
     if (vertices) {
         delete[] vertices;
@@ -246,10 +259,16 @@ void Mesh::Resize(uint32_t verticesCount, uint32_t indicesCount)
     if (indices) {
         delete[] indices;
     }
+    if (textureCoordinates) {
+        delete[] textureCoordinates;
+    }
     this->verticesCount = verticesCount;
     this->indicesCount = indicesCount;
     vertices = new Vector3[verticesCount];
     indices = new uint32_t[indicesCount];
+    if (hasTextureCoordinates) {
+        textureCoordinates = new Vector2[verticesCount];
+    }
 }
 
 Mesh::~Mesh()
@@ -259,5 +278,8 @@ Mesh::~Mesh()
     }
     if (indices) {
         delete[] indices;
+    }
+    if (textureCoordinates) {
+        delete[] textureCoordinates;
     }
 }
