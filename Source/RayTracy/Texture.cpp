@@ -6,8 +6,12 @@ Texture::Texture(uint32_t width, uint32_t height, uint32_t bytesPerPixel, bool m
     width(width),
     height(height),
     bytesPerPixel(bytesPerPixel),
-    mipmap(mipmap)
+    mipmap(mipmap),
+    data(nullptr)
 {
+    if (width == 0 || height == 0) {
+        return;
+    }
     uint32_t size = width * height * bytesPerPixel;
     if (mipmap) {
         size += ceil(size / 3.0);
@@ -94,6 +98,11 @@ Vector4 Texture::GetPixel(float u, float v, uint32_t level) const
     uint32_t x = GetCoordinate(u, width);
     uint32_t y = GetCoordinate(v, height);
     return GetPixel(x, y, level);
+}
+
+uint8_t* Texture::GetData() const
+{
+    return data;
 }
 
 Vector4 Texture::Interpolate(uint32_t offset, uint32_t x, uint32_t y, uint32_t previousWidth) const

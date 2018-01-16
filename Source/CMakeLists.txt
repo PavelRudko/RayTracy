@@ -17,12 +17,22 @@ endif()
 
 set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY true)
 
+add_subdirectory(Libs)
 add_subdirectory(RayTracy)
 
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Debug;Release" FORCE)
 get_filename_component(ROOT_DIR ${PROJECT_SOURCE_DIR} DIRECTORY)
 set(OUTPUT_BUILD_PREFIX "${ROOT_DIR}/Build" CACHE STRING "${ROOT_DIR}/Build")
-set_target_properties(RayTracy PROPERTIES
+
+set(ALL_TARGETS RayTracy)
+if(BUILD_ZLIB)
+    set(ALL_TARGETS zlibstatic ${ALL_TARGETS})
+endif()
+if(BUILD_LIBPNG)
+    set(ALL_TARGETS pngstatic ${ALL_TARGETS})
+endif()
+
+set_target_properties(${ALL_TARGETS} PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY "${OUTPUT_BUILD_PREFIX}/${PLATFORM}"
     LIBRARY_OUTPUT_DIRECTORY "${OUTPUT_BUILD_PREFIX}/${PLATFORM}"
     RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_BUILD_PREFIX}/${PLATFORM}"

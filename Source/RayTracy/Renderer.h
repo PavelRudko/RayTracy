@@ -19,7 +19,7 @@ private:
     Scene scene;
     uint32_t maxDepth, samplesCount;
 
-    Vector4 Renderer::FilterTexture(const Texture& texture, float x, float y, float distance, uint32_t resolution, float textureScale, float mipBias) const;
+    Vector4 FilterTexture(const Texture& texture, float x, float y, float distance, uint32_t resolution, float textureScale, float mipBias) const;
     Vector3 RestrictColor(Vector3 color) const;
     bool Refract(Vector3 direction, Vector3 normal, float ior, Vector3* refracted, float* kr) const;
     Vector3 CastRay(Ray ray, uint32_t depth, uint32_t screenWidth) const;
@@ -28,7 +28,7 @@ private:
     Vector3 CalculateColor(Material material, Vector3 normal, Ray ray, float distance, float u, float v, uint32_t screenWidth) const;
     bool CheckIntersection(Ray ray, float maxDistance) const;
     uint8_t ToByte(float value) const;
-    Vector3 Renderer::GetMaterialColor(Material material, float u, float v, float distance, uint32_t screenWidth) const;
+    Vector3 GetMaterialColor(Material material, float u, float v, float distance, uint32_t screenWidth) const;
 };
 
 #endif

@@ -6,6 +6,7 @@ Texture
   height: 2
   bytesPerPixel: 3
   mipmap: 1
+  pixels:
   0, 0, 0
   255, 255, 255
   255, 255, 255
@@ -51,7 +52,7 @@ Plane
   ks: 0.0
   texture: 0
   reflectivity: 0.3
-  mipBias: 15
+  mipBias: 12
 
 Disk
   point: -2, -2, -7

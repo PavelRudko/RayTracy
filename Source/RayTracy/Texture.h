@@ -28,6 +28,8 @@ public:
     Vector4 GetPixel(uint32_t x, uint32_t y, uint32_t level = 0) const;
     Vector4 GetPixel(float u, float v, uint32_t level = 0) const;
 
+    uint8_t* GetData() const;
+
     bool GenerateMipmap();
     bool HasMipmap() const;
     uint32_t GetWidth() const;

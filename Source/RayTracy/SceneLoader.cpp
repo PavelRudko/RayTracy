@@ -62,6 +62,14 @@ bool SceneLoader::ParseBool(bool& value)
     return true;
 }
 
+std::string SceneLoader::ParseString()
+{
+    auto token = strtok(0, Delimiters);
+    std::string value(token);
+    uint32_t valueLength = value.find_last_of(" \n\r");
+    return value.substr(0, valueLength);
+}
+
 bool SceneLoader::ParseVector(Vector3& vector) {
     return ParseFloat(vector.x) && ParseFloat(vector.y) && ParseFloat(vector.z);
 }
@@ -225,14 +233,39 @@ bool SceneLoader::ParseLight(FILE* file, Light* light, uint32_t& lineNumber, cha
     )
 }
 
-bool SceneLoader::ParseTexture(FILE * file, Scene * scene, uint32_t& lineNumber, char* line, char * token)
+bool SceneLoader::ParseTexture(FILE * file, Scene * scene, uint32_t& lineNumber, char* line, char* token, const std::string& directoryPath)
 {
-    int width, height, bytesPerPixel, mipmap;
+    int width = -1, height = -1, bytesPerPixel = -1, mipmap = 0;
 
-    RequireInt("width", "Width", width);
-    RequireInt("height", "Height", height);
-    RequireInt("bytesPerPixel", "Bytes per pixel", bytesPerPixel);
-    RequireInt("mipmap", "Mipmap", mipmap);
+    bool result = true;
+    while (!feof(file) && result) {
+        fgets(line, LineLength, file);                          
+        lineNumber++;                                           
+        if (IsEmptyLine(line)) {
+            break;                                              
+        }                                                       
+        auto name = strtok(line, Delimiters);
+        LookForInt("width", width);
+        LookForInt("height", height);
+        LookForInt("bytesPerPixel", bytesPerPixel);
+        LookForInt("mipmap", mipmap);
+        if (strcmp("pixels", name) == 0) {
+            break;
+        }
+        if (strcmp("path", name) == 0) {
+            auto path = ParseString();
+            scene->textures.push_back(textureLoader.LoadTexture(directoryPath, path, mipmap));
+            Texture& texture = scene->textures[scene->textures.size() - 1];
+            if (texture.GetHeight() == 0 || texture.GetWidth() == 0) {
+                printf("Cannot load texture file %s.\n", path.c_str());
+                return false;
+            }
+            if (mipmap == 1) {
+                texture.GenerateMipmap();
+            }
+            return true;
+        }
+    }
 
     if (width < 0 || height < 0 || bytesPerPixel < 3 || bytesPerPixel > 4 || (mipmap != 0 && mipmap != 1)) {
         printf("Unacceptable values for texture at line %d.\n", lineNumber);
@@ -262,7 +295,7 @@ bool SceneLoader::ParseTexture(FILE * file, Scene * scene, uint32_t& lineNumber,
     return true;
 }
 
-bool SceneLoader::ParseFile(FILE* file, Scene* scene)
+bool SceneLoader::ParseFile(FILE* file, Scene* scene, const std::string& directoryPath)
 {
     uint32_t lineNumber = 0;
     char line[LineLength], token[TokenLength];
@@ -314,7 +347,7 @@ bool SceneLoader::ParseFile(FILE* file, Scene* scene)
             scene->objects.push_back(std::unique_ptr<Object>(mesh));
         }
         else if (strcmp(token, "Texture") == 0) {
-            result = ParseTexture(file, scene, lineNumber, line, token);
+            result = ParseTexture(file, scene, lineNumber, line, token, directoryPath);
         }
         else {
             printf("Unknown token '%s' at line %d.\n", token, lineNumber);
@@ -332,14 +365,15 @@ bool SceneLoader::ParseFile(FILE* file, Scene* scene)
 bool SceneLoader::LoadScene(const char* path, Scene* scene)
 {
     scene->backgroundColor = Vector3{ 0, 0, 0 };
+    auto directoryPath = GetDirectoryPath(path);
 
     auto file = fopen(path, "r");
     if (!file) {
         printf("File is not found.\n");
         return false;
     }
-
-    bool result = ParseFile(file, scene);
+    
+    bool result = ParseFile(file, scene, directoryPath);
     fclose(file);
 
     if (!result) {
@@ -348,4 +382,11 @@ bool SceneLoader::LoadScene(const char* path, Scene* scene)
     }
 
     return result;
+}
+
+std::string SceneLoader::GetDirectoryPath(const char* path) const
+{
+    std::string str(path);
+    uint32_t directoryPathLength = str.find_last_of("/\\");
+    return str.substr(0, directoryPathLength);
 }
