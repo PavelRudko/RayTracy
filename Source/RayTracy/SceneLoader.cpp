@@ -167,12 +167,13 @@ bool SceneLoader::ParseTriangle(FILE* file, Triangle* triangle, uint32_t& lineNu
     )
 }
 
-bool SceneLoader::ParseMesh(FILE* file, Mesh* mesh, uint32_t& lineNumber, char* line, char* token)
+bool SceneLoader::ParseMesh(FILE* file, Mesh* mesh, uint32_t& lineNumber, char* line, char* token, const std::string& directoryPath)
 {
+    float scale;
     Vector3 position, rotation;
     int verticesCount = 0, indicesCount = 0, hasTextureCoordinates = 0;
 
-    bool result = true;
+    bool result = true, fromFile = false;
     while (!feof(file) && result) {
         fgets(line, LineLength, file);
         lineNumber++;
@@ -185,54 +186,67 @@ bool SceneLoader::ParseMesh(FILE* file, Mesh* mesh, uint32_t& lineNumber, char* 
         LookForInt("hasTextureCoordinates", hasTextureCoordinates);
         LookForVector("position", position);
         LookForVector("rotation", rotation);
+        LookForFloat("scale", scale);
         if (strcmp("data", name) == 0) {
+            break;
+        }
+        if (strcmp("path", name) == 0) {
+            auto path = ParseString();
+            if (!meshLoader.LoadMesh(directoryPath, path, mesh)) {
+                printf("Cannot load mesh file %s.\n", path.c_str());
+                return false;
+            }
+            fromFile = true;
             break;
         }
     }
 
-    if (verticesCount <= 0 || indicesCount <= 0 || (hasTextureCoordinates != 0 && hasTextureCoordinates != 1)) {
-        printf("Unacceptable values for mesh at line %d.\n", lineNumber);
-        return false;
-    }
+    mesh->SetTransformation(position, rotation, scale);
 
-    mesh->Resize(verticesCount, indicesCount, hasTextureCoordinates == 1);
-    mesh->SetTransformation(position, rotation);
-
-    for (int i = 0; i < verticesCount; i++) {
-        fgets(line, LineLength, file);
-        lineNumber++;
-        Vector3 vertex;
-        if (sscanf(line, "%f,%f,%f", &vertex.x, &vertex.y, &vertex.z) != 3) {
-            Missing("Vertices", lineNumber);
+    if (!fromFile) {
+        if (verticesCount <= 0 || indicesCount <= 0 || (hasTextureCoordinates != 0 && hasTextureCoordinates != 1)) {
+            printf("Unacceptable values for mesh at line %d.\n", lineNumber);
             return false;
         }
-        mesh->SetVertex(i, vertex);
-    }
 
-    for (int i = 0; i < verticesCount && hasTextureCoordinates; i++) {
-        fgets(line, LineLength, file);
-        lineNumber++;
-        Vector2 textureCoordinate;
-        if (sscanf(line, "%f,%f", &textureCoordinate.x, &textureCoordinate.y) != 2) {
-            Missing("Texture coordinates", lineNumber);
-            return false;
-        }
-        mesh->SetTextureCoordinate(i, textureCoordinate);
-    }
+        mesh->Resize(verticesCount, indicesCount, hasTextureCoordinates == 1);
 
-    for (int i = 0; i < indicesCount; i++) {
-        fgets(line, LineLength, file);
-        lineNumber++;
-        uint32_t index;
-        if (sscanf(line, "%d", &index) != 1) {
-            Missing("Indices", lineNumber);
-            return false;
+        for (int i = 0; i < verticesCount; i++) {
+            fgets(line, LineLength, file);
+            lineNumber++;
+            Vector3 vertex;
+            if (sscanf(line, "%f,%f,%f", &vertex.x, &vertex.y, &vertex.z) != 3) {
+                Missing("Vertices", lineNumber);
+                return false;
+            }
+            mesh->SetVertex(i, vertex);
         }
-        if (index < 0 || index >= verticesCount) {
-            printf("Index is out of range at line %d.\n", lineNumber);
-            return false;
+
+        for (int i = 0; i < verticesCount && hasTextureCoordinates; i++) {
+            fgets(line, LineLength, file);
+            lineNumber++;
+            Vector2 textureCoordinate;
+            if (sscanf(line, "%f,%f", &textureCoordinate.x, &textureCoordinate.y) != 2) {
+                Missing("Texture coordinates", lineNumber);
+                return false;
+            }
+            mesh->SetTextureCoordinate(i, textureCoordinate);
         }
-        mesh->SetIndex(i, index);
+
+        for (int i = 0; i < indicesCount; i++) {
+            fgets(line, LineLength, file);
+            lineNumber++;
+            uint32_t index;
+            if (sscanf(line, "%d", &index) != 1) {
+                Missing("Indices", lineNumber);
+                return false;
+            }
+            if (index < 0 || index >= verticesCount) {
+                printf("Index is out of range at line %d.\n", lineNumber);
+                return false;
+            }
+            mesh->SetIndex(i, index);
+        }
     }
 
     result = true;
@@ -376,7 +390,7 @@ bool SceneLoader::ParseFile(FILE* file, Scene* scene, const std::string& directo
         }
         else if (strcmp(token, "Mesh") == 0) {
             auto mesh = new Mesh;
-            result = ParseMesh(file, mesh, lineNumber, line, token);
+            result = ParseMesh(file, mesh, lineNumber, line, token, directoryPath);
             scene->objects.push_back(std::unique_ptr<Object>(mesh));
         }
         else if (strcmp(token, "Texture") == 0) {

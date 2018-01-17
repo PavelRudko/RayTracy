@@ -91,7 +91,7 @@ struct Mesh : public Object
     uint32_t* indices;
     uint32_t indicesCount;
     uint32_t verticesCount;
-    Matrix4 rotationMatrix, translationMatrix;
+    Matrix4 rotationMatrix, translationMatrix, scaleMatrix;
 
     Mesh();
     Mesh(Mesh&& other);
@@ -116,7 +116,7 @@ struct Mesh : public Object
         textureCoordinates[index] = value;
     }
 
-    void SetTransformation(Vector3 position, Vector3 rotation);
+    void SetTransformation(Vector3 position, Vector3 rotation, float scale);
 
     ~Mesh();
 };

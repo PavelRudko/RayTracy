@@ -18,6 +18,7 @@ public:
     static Matrix4 RotationY(float angle);
     static Matrix4 RotationZ(float angle);
     static Matrix4 Translation(float dx, float dy, float dz);
+    static Matrix4 Scale(float sx, float sy, float sz);
     static Matrix4 Identity();
 
     inline void Set(uint32_t i, uint32_t j, float value)

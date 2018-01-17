@@ -6,6 +6,8 @@ endif()
 add_executable(RayTracy
     TextureLoader.h
     TextureLoader.cpp
+    MeshLoader.h
+    MeshLoader.cpp
     SceneLoader.h
     SceneLoader.cpp
     Geometry.cpp

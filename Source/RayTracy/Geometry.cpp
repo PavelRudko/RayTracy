@@ -200,9 +200,9 @@ bool Mesh::HasIntersection(Ray ray, float* t, Vector3* normal, float* u, float* 
     float minDistance = INFINITY, distance, minU, minV, cu, cv;
     Vector3 minN, n;
 
-    ray.origin = rotationMatrix * translationMatrix * ray.origin;
-    ray.direction = rotationMatrix * ray.direction;
-    ray.direction.Normalize();
+    ray.origin = scaleMatrix * rotationMatrix * translationMatrix * ray.origin;
+    ray.direction = scaleMatrix * rotationMatrix * ray.direction;
+    //ray.direction.Normalize();
 
     for (uint32_t i = 0; i < indicesCount; i += 3) {
         uint32_t indexA = indices[i], indexB = indices[i + 1], indexC = indices[i + 2];
@@ -275,10 +275,11 @@ void Mesh::Resize(uint32_t verticesCount, uint32_t indicesCount, bool hasTexture
     }
 }
 
-void Mesh::SetTransformation(Vector3 position, Vector3 rotation)
+void Mesh::SetTransformation(Vector3 position, Vector3 rotation, float scale)
 {
     rotationMatrix = Matrix4::RotationX(-rotation.x) * Matrix4::RotationZ(-rotation.z) * Matrix4::RotationY(-rotation.y);
     translationMatrix = Matrix4::Translation(-position.x, -position.y, -position.z);
+    scaleMatrix = Matrix4::Scale(1.0f / scale, 1.0f / scale, 1.0f / scale);
 }
 
 Mesh::~Mesh()

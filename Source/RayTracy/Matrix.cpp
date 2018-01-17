@@ -11,6 +11,17 @@ Matrix4::Matrix4(std::initializer_list<float> list)
     std::copy(list.begin(), list.end(), data);
 }
 
+Matrix4 Matrix4::Scale(float sx, float sy, float sz)
+{
+    return Matrix4
+    {
+        sx, 0, 0, 0,
+        0, sy, 0, 0,
+        0, 0, sz, 0,
+        0, 0, 0, 1
+    };
+}
+
 Matrix4 Matrix4::RotationX(float angle)
 {
     float c = cos(angle);
