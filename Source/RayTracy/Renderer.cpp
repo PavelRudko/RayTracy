@@ -4,7 +4,7 @@
 #include <math.h>
 #include <cmath>
 
-Renderer::Renderer() : maxDepth(3), samplesCount(1)
+Renderer::Renderer() : maxDepth(3), samplesCount(2)
 {
 }
 

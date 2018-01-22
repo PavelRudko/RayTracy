@@ -33,6 +33,11 @@ Vector2 Vector2::operator - (Vector2 other)
     return Vector2{ x - other.x, y - other.y };
 }
 
+bool Vector2::operator==(const Vector2 & other)
+{
+    return x == other.x && y == other.y;
+}
+
 Vector3::Vector3(float x, float y, float z) : 
     x(x), 
     y(y), 
@@ -68,6 +73,11 @@ Vector3 Vector3::operator - (Vector3 other)
     return Vector3{ x - other.x, y - other.y, z - other.z };
 }
 
+bool Vector3::operator==(const Vector3 & other)
+{
+    return x == other.x && y == other.y && z == other.z;
+}
+
 float Vector4::GetLength()
 {
     return sqrtf(x * x + y * y + z * z + w * w);
@@ -100,6 +110,11 @@ Vector4 Vector4::operator + (Vector4 other)
 Vector4 Vector4::operator - (Vector4 other)
 {
     return Vector4{ x - other.x, y - other.y, z - other.z, w - other.w };
+}
+
+bool Vector4::operator==(const Vector4 & other)
+{
+    return x == other.x && y == other.y && z == other.z && w == other.w;
 }
 
 

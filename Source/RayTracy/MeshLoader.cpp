@@ -40,9 +40,9 @@ bool MeshLoader::LoadMesh(const std::string& directoryPath, const std::string& p
     }
 
     char line[LineLength];
-    std::vector<Vector3> vertices;
-    std::vector<Vector2> textureCoordinates;
-    std::vector<int> faces;
+    std::vector<Vector3> vertices, cachedVertices;
+    std::vector<Vector2> textureCoordinates, cachedTextureCoordinates;
+    std::vector<int> faces, indices;
 
     while (!feof(file)) {
         line[0] = 0;
@@ -76,19 +76,50 @@ bool MeshLoader::LoadMesh(const std::string& directoryPath, const std::string& p
         }
     }
 
-    mesh->Resize(textureCoordinates.size(), faces.size() / 2, true);
-
-    for (uint32_t i = 0; i < textureCoordinates.size(); i++) {
-        mesh->SetTextureCoordinate(i, textureCoordinates[i]);
-    }
-
     for (uint32_t i = 0; i < faces.size(); i += 6) {
         for (uint32_t j = 0; j < 6; j += 2) {
             uint32_t vertexIndex = faces[i + j] - 1;
             uint32_t textureCoordinateIndex = faces[i + j + 1] - 1;
-            mesh->SetVertex(textureCoordinateIndex, vertices[vertexIndex]);
-            mesh->SetIndex((i + j) / 2, textureCoordinateIndex);
+
+            if (vertexIndex >= vertices.size() || textureCoordinateIndex >= textureCoordinates.size()) {
+                continue;
+            }
+
+            auto vertex = vertices[vertexIndex];
+            auto textureCoordinate = textureCoordinates[textureCoordinateIndex];
+
+            uint32_t cachedIndex = cachedVertices.size();
+
+            for (uint32_t k = 0; k < cachedVertices.size(); k++) {
+                auto cachedVertex = cachedVertices[k];
+                auto cachedTextureCoordinate = cachedTextureCoordinates[k];
+
+                if (cachedVertex == vertex && cachedTextureCoordinate == textureCoordinate) {
+                    cachedIndex = k;
+                    break;
+                }
+            }
+
+            if (cachedIndex == cachedVertices.size()) {
+                cachedVertices.push_back(vertex);
+                cachedTextureCoordinates.push_back(textureCoordinate);
+            }
+
+            indices.push_back(cachedIndex);
         }
+    }
+
+    mesh->Resize(cachedVertices.size(), faces.size() / 2, true);
+
+    for (uint32_t i = 0; i < cachedVertices.size(); i++)
+    {
+        mesh->SetVertex(i, cachedVertices[i]);
+        mesh->SetTextureCoordinate(i, cachedTextureCoordinates[i]);
+    }
+
+    for (uint32_t i = 0; i < indices.size(); i++)
+    {
+        mesh->SetIndex(i, indices[i]);
     }
 
     fclose(file);

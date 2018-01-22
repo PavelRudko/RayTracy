@@ -15,6 +15,7 @@ struct Vector2
     Vector2 operator * (float multiplier);
     Vector2 operator + (Vector2 other);
     Vector2 operator - (Vector2 other);
+    bool operator == (const Vector2& other);
 };
 
 struct Vector3
@@ -30,6 +31,7 @@ struct Vector3
     Vector3 operator * (float multiplier);
     Vector3 operator + (Vector3 other);
     Vector3 operator - (Vector3 other);
+    bool operator == (const Vector3& other);
 };
 
 struct Vector4
@@ -45,6 +47,7 @@ struct Vector4
     Vector4 operator * (float multiplier);
     Vector4 operator + (Vector4 other);
     Vector4 operator - (Vector4 other);
+    bool operator == (const Vector4& other);
 };
 
 float Dot(Vector3 a, Vector3 b);

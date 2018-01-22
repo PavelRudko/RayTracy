@@ -84,7 +84,7 @@ int main(int argc, char** argv)
     windowClass.lpfnWndProc = &WindowProcedure;
     RegisterClass(&windowClass);
 
-    window = CreateWindow(windowClass.lpszClassName, "RayTracy", WS_OVERLAPPEDWINDOW, 100, 100, 640, 480, NULL, NULL, windowClass.hInstance, NULL);
+    window = CreateWindow(windowClass.lpszClassName, "RayTracy", WS_OVERLAPPEDWINDOW, 100, 100, 780, 600, NULL, NULL, windowClass.hInstance, NULL);
     
     CreateBuffer();
     ShowWindow(window, SW_SHOW);

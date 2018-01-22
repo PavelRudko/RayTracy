@@ -202,10 +202,13 @@ bool Mesh::HasIntersection(Ray ray, float* t, Vector3* normal, float* u, float* 
 
     ray.origin = scaleMatrix * rotationMatrix * translationMatrix * ray.origin;
     ray.direction = scaleMatrix * rotationMatrix * ray.direction;
-    //ray.direction.Normalize();
 
     for (uint32_t i = 0; i < indicesCount; i += 3) {
         uint32_t indexA = indices[i], indexB = indices[i + 1], indexC = indices[i + 2];
+
+        if (indexA >= verticesCount || indexB >= verticesCount || indexC >= verticesCount) {
+            continue;
+        }
 
         auto a = vertices[indexA];
         auto b = vertices[indexB];
@@ -222,7 +225,7 @@ bool Mesh::HasIntersection(Ray ray, float* t, Vector3* normal, float* u, float* 
                     auto t3 = textureCoordinates[indexC];
                     auto t = t1 * (1 - cu - cv) + t2 * cu + t3 * cv;
                     minU = t.x;
-                    minV = t.y;
+                    minV = 1 - t.y;
                 }
                 else {
                     minU = cu;
